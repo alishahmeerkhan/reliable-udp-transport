@@ -1,0 +1,7 @@
+.env
+
+*.docx
+~$*.docx
+
+__pycache__/
+application_layer/
