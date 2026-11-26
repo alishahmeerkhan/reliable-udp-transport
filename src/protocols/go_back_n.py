@@ -2,6 +2,7 @@ import time
 import socket
 import threading
 from rich import print
+from src.core.congestion_control import TCPReno
 from src.core.packet import Packet, FLAG_DATA, FLAG_ACK, FLAG_FIN
 
 
@@ -9,7 +10,7 @@ class GBNSender:
     def __init__(self, sock, dest_addr, window_size=8, timeout_duration=0.5):
         self.socket = sock
         self.dest_addr = dest_addr
-        self.window_size = window_size # will be updated to cwnd after congestion control implementation
+        self.congestion = TCPReno()
         self.rwnd = window_size
         self.timeout_duration = timeout_duration
 
@@ -24,7 +25,7 @@ class GBNSender:
         self.ack_thread.start()
 
     def _effective_window(self):
-        return max(1, min(self.window_size, self.rwnd))
+        return max(1, min(self.congestion.get_window(), self.rwnd))
 
     def send_data(self, payload):
         while True:
@@ -74,8 +75,15 @@ class GBNSender:
                             break
 
                     self.base = ack_num + 1
+                    self.congestion.on_new_ack()
                     self._stop_timer()
                     if self.buffer:
+                        self._start_timer()
+
+                elif self.buffer and ack_num == self.base - 1:
+                    if self.congestion.on_duplicate_ack():
+                        print(f'[bold magenta]SENDER:[/bold magenta] Three Dup ACKs! Fast retransmitting {self.buffer[0].header.seq_num}')
+                        self.socket.sendto(self.buffer[0].to_bytes(), self.dest_addr)
                         self._start_timer()
 
     def _on_timeout(self):
@@ -87,6 +95,7 @@ class GBNSender:
             self._start_timer()
             for pkt in self.buffer:
                 print(f'[bold yellow]\t> SENDER:[/bold yellow] Retransmitting packet {pkt.header.seq_num}')
+                self.congestion.on_timeout()
                 self.socket.sendto(pkt.to_bytes(), self.dest_addr)
 
     def _start_timer(self):

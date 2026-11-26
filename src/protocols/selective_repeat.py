@@ -2,13 +2,15 @@ import time
 import socket
 import threading
 from rich import print
+from src.core.congestion_control import TCPReno
 from src.core.packet import Packet, FLAG_DATA, FLAG_ACK, FLAG_FIN
 
 class SRSender:
     def __init__(self, sock, dest_addr, window_size=8, timeout_duration=0.5):
         self.socket = sock
         self.dest_addr = dest_addr
-        self.window_size = window_size
+
+        self.congestion = TCPReno()
         self.rwnd = window_size
         self.timeout_duration = timeout_duration
 
@@ -23,7 +25,7 @@ class SRSender:
         self.ack_thread.start()
 
     def _effective_window(self):
-        return max(1, min(self.window_size, self.rwnd))
+        return max(1, min(self.congestion.get_window(), self.rwnd))
 
     def send_data(self, payload):
         while True:
@@ -63,8 +65,18 @@ class SRSender:
                     print(f'[bold green]SENDER:[/bold green] Received ACK {ack_num} (rwnd={self.rwnd})')
                     del self.buffer[ack_num]
                     self._stop_timer(ack_num)
+
+                    old_base = self.base
                     while self.base < self.next_seqnum and self.base not in self.buffer:
                         self.base += 1
+
+                    if self.base > old_base:
+                        self.congestion.on_new_ack()
+                    elif self.base in self.buffer:
+                        if self.congestion.on_duplicate_ack():
+                            print(f'[bold magenta]SENDER:[/bold magenta] Three Dup ACKs! Fast retransmitting {self.base}')
+                            self.socket.sendto(self.buffer[self.base].to_bytes(), self.dest_addr)
+                            self._start_timer()
 
     def _on_timeout(self, seq_num):
         with self.lock:
@@ -73,6 +85,7 @@ class SRSender:
 
             pkt = self.buffer[seq_num]
             print(f'[bold yellow]SENDER:[/bold yellow] Timeout for packet {seq_num}! Retransmitting...')
+            self.congestion.on_timeout()
             self.socket.sendto(pkt.to_bytes(), self.dest_addr)
             self._start_timer(seq_num)
 
