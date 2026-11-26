@@ -51,17 +51,19 @@ def test_sender_successful_send():
 
 
 def test_sender_effective_window():
-    """Effective window should respect the receiver's advertised window."""
+    """Effective window should respect both cwnd and the receiver's advertised window."""
 
     sender = create_sender(window_size=8)
 
-    sender.rwnd = 3
 
+    sender.rwnd = 8
+    assert sender._effective_window() == 1
+
+    sender.congestion.cwnd = 8.0
+    sender.rwnd = 3
     assert sender._effective_window() == 3
 
     sender.rwnd = 0
-
-    # Implementation enforces a minimum window of 1
     assert sender._effective_window() == 1
 
     sender.close()
@@ -72,6 +74,7 @@ def test_sender_ack_received():
 
     mock_socket = MagicMock()
     sender = create_sender(mock_socket)
+    sender.congestion.cwnd = 8.0
 
     with patch.object(sender, "_start_timer"):
         sender.send_data(b"Packet 0")

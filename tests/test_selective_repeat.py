@@ -42,16 +42,21 @@ def test_sender_successful_send():
 
 
 def test_sender_effective_window():
+    """Effective window should respect both cwnd and the receiver's advertised window."""
+
     sender = create_sender(window_size=8)
 
-    sender.rwnd = 4
-    assert sender._effective_window() == 4
 
-    sender.rwnd = 12
-    assert sender._effective_window() == 8
+    sender.rwnd = 8
+    assert sender._effective_window() == 1
+
+    sender.congestion.cwnd = 8.0
+    sender.rwnd = 3
+    assert sender._effective_window() == 3
 
     sender.rwnd = 0
     assert sender._effective_window() == 1
+
 
 
 def test_sender_ack_received():
