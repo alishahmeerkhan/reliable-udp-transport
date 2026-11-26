@@ -1,3 +1,4 @@
+import os
 import time
 import socket
 import threading
@@ -131,6 +132,9 @@ class GBNReceiver:
         self.expected_seqnum = 0
 
     def start(self):
+        if os.path.exists(self.output_path):
+            os.remove(self.output_path)
+            
         with open(self.output_path, 'wb') as file:
             while True:
                 raw_data, sender_addr = self.socket.recvfrom(4096)
