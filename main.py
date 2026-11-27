@@ -20,7 +20,7 @@ def sha256_file(file_path):
     return hash.hexdigest()
 
 
-def ensure_sample_file(file_path, size_kb=1):
+def ensure_sample_file(file_path, size_kb=100):
     dir_name = os.path.dirname(file_path)
     if dir_name and not os.path.exists(dir_name):
         os.makedirs(dir_name)
@@ -32,7 +32,7 @@ def ensure_sample_file(file_path, size_kb=1):
         print(f'[bold cyan]INFO:[/bold cyan] Creating {size_kb}KB sample file at {file_path}')
 
         with open(file_path, 'wb') as file:
-            file.write(os.urandom(size_kb * 10))
+            file.write(os.urandom(size_kb * 1024))
 
 def plot_cwnd(history, protocol, loss_prob, output_path='data/graph/cwnd_plot.png'):
     dir_name = os.path.dirname(output_path)
@@ -51,7 +51,7 @@ def plot_cwnd(history, protocol, loss_prob, output_path='data/graph/cwnd_plot.pn
         plt.plot(times, cwnds, label='cwnd (packets)', linewidth=2)
         plt.plot(times, ssthreshs, label='ssthresh', linestyle='--', alpha=0.7)
 
-        plt.title(f'TCP Reno Congestion Control ({protocol.upper()} | Loss: {loss_prob * 100:.0f})')
+        plt.title(f'TCP Reno Congestion Control ({protocol.upper()} | Loss: {loss_prob * 100:.0f}%)')
         plt.xlabel('Time (seconds)')
         plt.ylabel('Window Size (packets)')
 
