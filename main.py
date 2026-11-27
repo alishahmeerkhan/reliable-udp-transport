@@ -34,7 +34,8 @@ def ensure_sample_file(file_path, size_kb=100):
         with open(file_path, 'wb') as file:
             file.write(os.urandom(size_kb * 1024))
 
-def plot_cwnd(history, protocol, loss_prob, output_path='data/graph/cwnd_plot.png'):
+def plot_cwnd(history, protocol, loss_prob, output_path='data/graph'):
+    output_path = output_path + f'/{protocol}_cwnd_plot.png'
     dir_name = os.path.dirname(output_path)
     if dir_name and not os.path.exists(dir_name):
         os.makedirs(dir_name)
@@ -51,7 +52,7 @@ def plot_cwnd(history, protocol, loss_prob, output_path='data/graph/cwnd_plot.pn
         plt.plot(times, cwnds, label='cwnd (packets)', linewidth=2)
         plt.plot(times, ssthreshs, label='ssthresh', linestyle='--', alpha=0.7)
 
-        plt.title(f'TCP Reno Congestion Control ({protocol.upper()} | Loss: {loss_prob * 100:.0f}%)')
+        plt.title(f'TCP Reno Congestion Control ({protocol.upper()} | Loss: {loss_prob * 100:.1f}%)')
         plt.xlabel('Time (seconds)')
         plt.ylabel('Window Size (packets)')
 
