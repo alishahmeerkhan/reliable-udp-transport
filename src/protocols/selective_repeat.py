@@ -38,11 +38,11 @@ class SRSender:
                     self.buffer[seq] = pkt
                     print(f'[bold white]SENDER:[/bold white] Sending packet {seq}')
                     self.socket.sendto(pkt.to_bytes(), self.dest_addr)
-                    self._start_timer()
+                    self._start_timer(seq)
 
                     self.next_seqnum += 1
                     return
-                time.sleep(0.005)
+            time.sleep(0.005)
 
     def _listen_for_acks(self):
         while self.running:
@@ -77,7 +77,7 @@ class SRSender:
                         if self.congestion.on_duplicate_ack():
                             print(f'[bold magenta]SENDER:[/bold magenta] Three Dup ACKs! Fast retransmitting {self.base}')
                             self.socket.sendto(self.buffer[self.base].to_bytes(), self.dest_addr)
-                            self._start_timer()
+                            self._start_timer(self.base)
 
     def _on_timeout(self, seq_num):
         with self.lock:
@@ -92,7 +92,7 @@ class SRSender:
 
     def _start_timer(self, seq_num):
         self._stop_timer(seq_num)
-        timer = threading.Timer(self.timeout_duration, self._on_timeout, args=(seq_num))
+        timer = threading.Timer(self.timeout_duration, self._on_timeout, args=(seq_num,))
         timer.daemon = True
         timer.start()
         self.timers[seq_num] = timer
